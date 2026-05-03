@@ -40,11 +40,12 @@ variable "db_password" {
 }
 
 # VPC por defecto (para pruebas, no creamos custom)
+# 1. Pedimos a AWS una lista de todos los IDs de VPCs que existan
+data "aws_vpcs" "todas" {}
+
+# 2. Usamos el primer ID de esa lista para obtener los detalles
 data "aws_vpc" "default" {
-  filter {
-    name   = "tag:Name"
-    values = ["available"]
-  }
+  id = data.aws_vpcs.todas.ids[0]
 }
 
 data "aws_subnets" "default" {
