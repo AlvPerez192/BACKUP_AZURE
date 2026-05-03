@@ -20,12 +20,12 @@ terraform {
   # en `terraform init` porque no se pueden usar variables en el bloque backend.
   backend "s3" {
     key    = "aws-test/terraform.tfstate"
-    region = "eu-west-1"
+    region = "us-east-1"
   }
 }
 
 provider "aws" {
-  region = "eu-west-1"
+  region = "us-east-1"
 }
 
 variable "db_password" {
@@ -41,7 +41,10 @@ variable "db_password" {
 
 # VPC por defecto (para pruebas, no creamos custom)
 data "aws_vpc" "default" {
-  default = true
+  filter {
+    name   = "tag:Name"
+    values = ["LabVPC"]
+  }
 }
 
 data "aws_subnets" "default" {
