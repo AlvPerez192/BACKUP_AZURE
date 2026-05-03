@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
 
 env:
-  RESOURCE_GROUP:  tfg-reseteo-total-rg
-  LOCATION:        southcentralus
-  STORAGE_ACCOUNT: stgalvarovictoria2026
+  RESOURCE_GROUP:  tfg-final-spain-rg
+  LOCATION:        spaincentral
+  STORAGE_ACCOUNT: stgalvarospain2026
   CONTAINER:       db-backups
 
 jobs:
