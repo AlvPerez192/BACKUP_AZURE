@@ -14,7 +14,7 @@ on:
 env:
   RESOURCE_GROUP:  tfg-multicloud-backup-rg
   LOCATION:        eastus
-  STORAGE_ACCOUNT: tfgmulticloudbackup
+  STORAGE_ACCOUNT: alvarotfgbackup2026
   CONTAINER:       db-backups
 
 jobs:
