@@ -43,7 +43,7 @@ variable "db_password" {
 data "aws_vpc" "default" {
   filter {
     name   = "tag:Name"
-    values = ["LabVPC"]
+    values = ["available"]
   }
 }
 
