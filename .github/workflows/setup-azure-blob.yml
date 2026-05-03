@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 env:
-  RESOURCE_GROUP:  tfg-multicloud-backup-rg
-  LOCATION:        eastus
+  RESOURCE_GROUP:  tfg-backup-v3-rg
+  LOCATION:        eastus2
   STORAGE_ACCOUNT: alvarotfgbackup2026
   CONTAINER:       db-backups
 
