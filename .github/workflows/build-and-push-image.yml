@@ -1,0 +1,92 @@
+# =============================================================================
+# Build & Push Docker image
+# =============================================================================
+# Construye la imagen de la app web y la sube a GitHub Container Registry
+# (ghcr.io). GHCR es gratis para repos publicos y no requiere configurar
+# credenciales extra (usa el GITHUB_TOKEN automatico).
+#
+# La imagen resultante esta en:
+#   ghcr.io/<tu-usuario>/<repo-name>:latest
+#
+# Despues de subir la imagen, actualiza el secreto APP_IMAGE de GitHub
+# con esa URL completa.
+#
+# Triggers:
+#   - workflow_dispatch (manual)
+#   - push a main que toque app/web-form/**
+# =============================================================================
+
+name: Build and Push Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/web-form/**'
+      - '.github/workflows/build-and-push-image.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/tfg-web
+
+jobs:
+  build:
+    name: Docker build & push
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write # necesario para pushear a ghcr.io
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=ref,event=branch
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app/web-form
+          file: ./app/web-form/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Resumen
+        run: |
+          IMAGE_LATEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          # Convertir a minusculas (ghcr exige nombre en minuscula)
+          IMAGE_LATEST_LOWER=$(echo "${IMAGE_LATEST}" | tr '[:upper:]' '[:lower:]')
+
+          echo "============================================"
+          echo "IMAGEN PUBLICADA"
+          echo ""
+          echo "URL: ${IMAGE_LATEST_LOWER}"
+          echo ""
+          echo ">>> ACTUALIZA EL SECRETO 'APP_IMAGE' CON ESTA URL"
+          echo ">>> Y HAZ LA IMAGEN PUBLICA EN:"
+          echo ">>>   github.com/${{ github.repository_owner }}?tab=packages"
+          echo ">>> (click en el package -> Package settings -> Change visibility)"
+          echo "============================================"

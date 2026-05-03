@@ -1,0 +1,17 @@
+{
+  "name": "tfg-web-form",
+  "version": "1.0.0",
+  "description": "App web del TFG: formulario CRUD de clientes sobre MySQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "ejs": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

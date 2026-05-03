@@ -1,0 +1,270 @@
+/* ============================================================================
+   TFG Multi-Cloud - estilos
+   Estetica: tecnica, sobria, terminal-friendly. Sin distracciones.
+   ============================================================================ */
+
+:root {
+  --bg:        #0f1115;
+  --surface:   #161922;
+  --surface-2: #1d212c;
+  --border:    #2a2f3d;
+  --text:      #e6e8ef;
+  --text-dim:  #8a92a6;
+  --accent:    #5eead4;     /* teal */
+  --aws:       #ff9900;
+  --azure:     #0078d4;
+  --danger:    #f87171;
+  --mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at top right, rgba(94, 234, 212, 0.06), transparent 50%),
+    radial-gradient(ellipse at bottom left, rgba(0, 120, 212, 0.05), transparent 50%);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 17, 21, 0.8);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.brand h1 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cloud-badge {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.cloud-badge.cloud-aws {
+  border-color: rgba(255, 153, 0, 0.4);
+  color: var(--aws);
+}
+
+.cloud-badge.cloud-azure {
+  border-color: rgba(0, 120, 212, 0.4);
+  color: var(--azure);
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.alert {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: var(--danger);
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.card h2 {
+  margin: 0 0 1.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.count {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 400;
+  background: var(--surface-2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+form .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  form .row { grid-template-columns: 1fr; }
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.req {
+  color: var(--accent);
+}
+
+input[type="text"],
+input[type="email"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
+}
+
+button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.05s;
+}
+
+button:hover { opacity: 0.85; }
+button:active { transform: scale(0.98); }
+
+button.danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid transparent;
+  padding: 0.2rem 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+button.danger:hover {
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.empty {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: -0.5rem;
+  padding: 0.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+tr:last-child td { border-bottom: none; }
+
+tr:hover td { background: var(--surface-2); }
+
+td.mono { font-family: var(--mono); font-size: 0.82rem; }
+td.small { color: var(--text-dim); font-size: 0.78rem; }
+
+footer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+footer code {
+  color: var(--accent);
+  background: var(--surface);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}

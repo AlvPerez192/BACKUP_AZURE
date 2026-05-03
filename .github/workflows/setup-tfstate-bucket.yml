@@ -1,0 +1,85 @@
+# =============================================================================
+# Bootstrap: crear bucket S3 para guardar el state de Terraform
+# =============================================================================
+# Este workflow se ejecuta UNA SOLA VEZ, antes de cualquier otro.
+# Crea un bucket S3 con versionado y cifrado para almacenar los .tfstate.
+#
+# El nombre del bucket debe ser globalmente unico. Cambia el sufijo en la
+# variable BUCKET_SUFFIX abajo (puede ser tu nombre, fecha, lo que sea).
+#
+# IMPORTANTE: Si reinicias el AWS Academy Lab, recuerda actualizar los
+# secretos AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY y AWS_SESSION_TOKEN
+# antes de ejecutar workflows que toquen AWS.
+# =============================================================================
+
+name: Setup Terraform State Bucket (S3)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_suffix:
+        description: 'Sufijo unico para el nombre del bucket (ej: tunombre-2026)'
+        required: true
+        default: 'tfg-tunombre-2026'
+
+env:
+  AWS_REGION: eu-west-1
+
+jobs:
+  setup-bucket:
+    name: Crear bucket S3 para tfstate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configurar credenciales de AWS Academy
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Verificar identidad
+        run: aws sts get-caller-identity
+
+      - name: Crear bucket S3
+        run: |
+          BUCKET="tfg-tfstate-${{ inputs.bucket_suffix }}"
+          echo "Creando bucket: ${BUCKET}"
+
+          # Crear bucket (en eu-west-1 hay que pasar LocationConstraint)
+          if aws s3api head-bucket --bucket "${BUCKET}" 2>/dev/null; then
+            echo "El bucket ya existe (no se hace nada)"
+          else
+            aws s3api create-bucket \
+              --bucket "${BUCKET}" \
+              --region "${AWS_REGION}" \
+              --create-bucket-configuration LocationConstraint="${AWS_REGION}"
+            echo "Bucket creado"
+          fi
+
+          # Activar versionado (importantisimo para state: permite rollback)
+          aws s3api put-bucket-versioning \
+            --bucket "${BUCKET}" \
+            --versioning-configuration Status=Enabled
+
+          # Cifrado por defecto
+          aws s3api put-bucket-encryption \
+            --bucket "${BUCKET}" \
+            --server-side-encryption-configuration '{
+              "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]
+            }'
+
+          # Bloquear acceso publico
+          aws s3api put-public-access-block \
+            --bucket "${BUCKET}" \
+            --public-access-block-configuration \
+              "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+
+          echo ""
+          echo "============================================"
+          echo "BUCKET LISTO: ${BUCKET}"
+          echo ""
+          echo ">>> GUARDA ESTE NOMBRE COMO SECRETO TFSTATE_BUCKET"
+          echo ">>> En Settings - Secrets and variables - Actions"
+          echo "============================================"

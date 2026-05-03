@@ -1,0 +1,78 @@
+# =============================================================================
+# Setup AWS RDS Test - crea la RDS de prueba en AWS
+# =============================================================================
+# Pre-requisitos:
+#   - Workflow "Setup Terraform State Bucket" ejecutado primero
+#   - Secretos: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN,
+#               TFSTATE_BUCKET, DB_PASSWORD
+# =============================================================================
+
+name: Setup AWS RDS Test
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-1
+  TF_DIR: terraform/aws-test
+
+jobs:
+  apply:
+    name: terraform apply (RDS)
+    runs-on: ubuntu-latest
+
+    # Permite que otros jobs lean los outputs si los exponemos
+    outputs:
+      rds_address: ${{ steps.outputs.outputs.rds_address }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS Academy
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+          terraform_wrapper: false
+
+      - name: Terraform Init (con backend S3)
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}"
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform plan -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+      - name: Leer outputs
+        id: outputs
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          RDS_ADDRESS=$(terraform output -raw rds_address)
+          echo "rds_address=${RDS_ADDRESS}" >> "$GITHUB_OUTPUT"
+
+      - name: Resumen
+        run: |
+          echo "============================================"
+          echo "RDS DESPLEGADA"
+          echo ""
+          echo "Hostname: ${{ steps.outputs.outputs.rds_address }}"
+          echo ""
+          echo ">>> ACTUALIZA EL SECRETO 'AWS_RDS_HOST' CON ESTE VALOR"
+          echo ">>> Settings - Secrets and variables - Actions"
+          echo "============================================"

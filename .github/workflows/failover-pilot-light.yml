@@ -1,0 +1,189 @@
+# =============================================================================
+# Failover Pilot Light: AWS caido -> desplegar todo en Azure
+# =============================================================================
+# Pasos:
+#   1. terraform apply (Azure DB + VM Docker) usando state remoto en S3
+#   2. Descargar tfg_app_latest.sql.gz del Blob al runner
+#   3. SSH a la VM, copiar el dump, restaurarlo en Azure DB (la VM hace
+#      de bastion porque Azure DB no es accesible desde fuera de la VNet)
+#   4. Arrancar el contenedor Docker de la app conectandolo a Azure DB
+#   5. Verificar /health
+# =============================================================================
+
+name: Failover Pilot Light
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-west-1
+  TF_DIR: terraform/azure-pilot
+
+jobs:
+  failover:
+    name: Desplegar pilot light en Azure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS (para el backend S3 del state)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login en Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+          terraform_wrapper: false
+
+      # ----- Desplegar infra Azure -----
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TFSTATE_BUCKET }}"
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="vm_admin_password=${{ secrets.VM_ADMIN_PASSWORD }}"
+
+      - name: Leer outputs de Terraform
+        id: outputs
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          echo "vm_ip=$(terraform output -raw vm_public_ip)" >> "$GITHUB_OUTPUT"
+          echo "mysql_fqdn=$(terraform output -raw mysql_fqdn)" >> "$GITHUB_OUTPUT"
+
+      # ----- Descargar el dump del Blob -----
+      - name: Descargar ultimo backup
+        run: |
+          az storage blob download \
+            --account-name tfgmulticloudbackup \
+            --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+            --container-name db-backups \
+            --name "tfg_app_latest.sql.gz" \
+            --file /tmp/tfg_app_latest.sql.gz
+
+          gunzip /tmp/tfg_app_latest.sql.gz
+          echo "Backup descargado y descomprimido"
+          ls -lh /tmp/tfg_app_latest.sql
+
+      - name: Instalar sshpass
+        run: sudo apt-get install -y -qq sshpass
+
+      # ----- Esperar a que cloud-init termine en la VM -----
+      - name: Esperar a que la VM este lista
+        run: |
+          VM_IP="${{ steps.outputs.outputs.vm_ip }}"
+          echo "Esperando a que la VM (${VM_IP}) termine cloud-init..."
+
+          for i in $(seq 1 30); do
+            if sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
+              ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 \
+              azureuser@${VM_IP} "test -f /tmp/vm-setup-complete" 2>/dev/null; then
+              echo "VM lista (cloud-init terminado)"
+              break
+            fi
+            echo "  Intento ${i}/30..."
+            sleep 10
+          done
+
+      # ----- Restaurar el dump en Azure DB pasando por la VM -----
+      - name: Copiar dump a la VM y restaurar en Azure DB
+        run: |
+          VM_IP="${{ steps.outputs.outputs.vm_ip }}"
+          MYSQL_HOST="${{ steps.outputs.outputs.mysql_fqdn }}"
+
+          # 1. Copiar dump del runner a la VM
+          sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
+            scp -o StrictHostKeyChecking=no \
+            /tmp/tfg_app_latest.sql \
+            azureuser@${VM_IP}:/tmp/tfg_app_latest.sql
+
+          # 2. Restaurar desde la VM (que sí tiene acceso a Azure DB via VNet)
+          sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
+            ssh -o StrictHostKeyChecking=no azureuser@${VM_IP} \
+            "mysql --host='${MYSQL_HOST}' --user='admin_tfg' \
+             --password='${{ secrets.DB_PASSWORD }}' \
+             tfg_app < /tmp/tfg_app_latest.sql && echo 'Restore OK'"
+
+      # ----- Arrancar la app en Docker -----
+      - name: Arrancar app en Docker
+        run: |
+          VM_IP="${{ steps.outputs.outputs.vm_ip }}"
+          MYSQL_HOST="${{ steps.outputs.outputs.mysql_fqdn }}"
+
+          sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
+            ssh -o StrictHostKeyChecking=no azureuser@${VM_IP} << DOCKER_CMD
+              sudo docker pull ${{ secrets.APP_IMAGE }}
+
+              # Quitar contenedor previo si existe (idempotente)
+              sudo docker rm -f tfg-web 2>/dev/null || true
+
+              sudo docker run -d \
+                --name tfg-web \
+                --restart unless-stopped \
+                -p 80:3000 \
+                -e DB_HOST="${MYSQL_HOST}" \
+                -e DB_PORT="3306" \
+                -e DB_NAME="tfg_app" \
+                -e DB_USER="admin_tfg" \
+                -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e APP_PORT="3000" \
+                -e CLOUD_PROVIDER="AZURE" \
+                ${{ secrets.APP_IMAGE }}
+
+              sleep 3
+              echo "Contenedor:"
+              sudo docker ps --filter name=tfg-web
+          DOCKER_CMD
+
+      # ----- Verificar -----
+      - name: Verificar app en Azure
+        run: |
+          VM_IP="${{ steps.outputs.outputs.vm_ip }}"
+          echo "Esperando a que la app arranque..."
+          sleep 15
+
+          for i in $(seq 1 6); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 10 "http://${VM_IP}/health" || echo "000")
+
+            echo "Intento ${i}/6: HTTP ${HTTP_CODE}"
+            if [ "${HTTP_CODE}" = "200" ]; then
+              echo "App funcionando en Azure: http://${VM_IP}"
+              curl -s "http://${VM_IP}/health" | jq .
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "ERROR: la app no respondio HTTP 200 tras 60s"
+          exit 1
+
+      - name: Resumen
+        if: always()
+        run: |
+          echo "============================================"
+          echo "FAILOVER COMPLETADO"
+          echo ""
+          echo "App:      http://${{ steps.outputs.outputs.vm_ip }}"
+          echo "Azure DB: ${{ steps.outputs.outputs.mysql_fqdn }}"
+          echo ""
+          echo "Para destruir (failback):"
+          echo "  Lanzar workflow 'Destroy Pilot Light'"
+          echo "============================================"

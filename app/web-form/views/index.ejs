@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TFG Multi-Cloud · Clientes</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>tfg-multicloud</h1>
+    </div>
+    <div class="cloud-badge cloud-<%= cloud.toLowerCase() %>">
+      <% if (cloud === 'AWS') { %>
+        <span>aws · eu-west-1</span>
+      <% } else if (cloud === 'AZURE') { %>
+        <span>azure · westeurope · DR</span>
+      <% } else { %>
+        <span><%= cloud %></span>
+      <% } %>
+    </div>
+  </header>
+
+  <main>
+    <% if (error) { %>
+      <div class="alert">Error: <%= error %></div>
+    <% } %>
+
+    <section class="card">
+      <h2>Nuevo cliente</h2>
+      <form method="POST" action="/clientes">
+        <div class="row">
+          <label>
+            Nombre <span class="req">*</span>
+            <input type="text" name="nombre" required maxlength="100">
+          </label>
+          <label>
+            Email <span class="req">*</span>
+            <input type="email" name="email" required maxlength="150">
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            Telefono
+            <input type="text" name="telefono" maxlength="20" placeholder="+34 612 345 678">
+          </label>
+          <label>
+            Empresa
+            <input type="text" name="empresa" maxlength="100">
+          </label>
+        </div>
+        <button type="submit">Crear cliente</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Clientes registrados <span class="count"><%= clientes.length %></span></h2>
+
+      <% if (clientes.length === 0) { %>
+        <p class="empty">No hay clientes todavia. Crea el primero arriba.</p>
+      <% } else { %>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Telefono</th>
+                <th>Empresa</th>
+                <th>Creado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% clientes.forEach(c => { %>
+                <tr>
+                  <td class="mono"><%= c.id %></td>
+                  <td><%= c.nombre %></td>
+                  <td class="mono"><%= c.email %></td>
+                  <td><%= c.telefono || '—' %></td>
+                  <td><%= c.empresa || '—' %></td>
+                  <td class="mono small"><%= new Date(c.created_at).toISOString().slice(0,16).replace('T',' ') %></td>
+                  <td>
+                    <form method="POST" action="/clientes/<%= c.id %>/delete" style="display:inline">
+                      <button type="submit" class="danger" onclick="return confirm('Borrar cliente <%= c.id %>?')">×</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <footer>
+    <code>GET /health</code> · TFG Infraestructura Multi-Cloud
+  </footer>
+</body>
+</html>

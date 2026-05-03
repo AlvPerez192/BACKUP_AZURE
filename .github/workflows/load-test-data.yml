@@ -1,0 +1,51 @@
+# =============================================================================
+# Load test data - carga el esquema y datos de prueba en RDS
+# =============================================================================
+# Ejecuta sql/01_clientes.sql contra la RDS. Idempotente: usa CREATE TABLE IF
+# NOT EXISTS y INSERT IGNORE, asi que se puede correr multiples veces.
+# =============================================================================
+
+name: Load test data
+
+on:
+  workflow_dispatch:
+
+jobs:
+  load:
+    name: mysql client < schema.sql
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar cliente MySQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mysql-client
+
+      - name: Verificar conexion a RDS
+        run: |
+          mysql \
+            --host="${{ secrets.AWS_RDS_HOST }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --password="${{ secrets.DB_PASSWORD }}" \
+            --connect-timeout=10 \
+            -e "SELECT VERSION(), DATABASE();" tfg_app
+
+      - name: Cargar schema y datos
+        run: |
+          mysql \
+            --host="${{ secrets.AWS_RDS_HOST }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --password="${{ secrets.DB_PASSWORD }}" \
+            tfg_app < sql/01_clientes.sql
+
+      - name: Verificar datos cargados
+        run: |
+          echo "Tabla clientes:"
+          mysql \
+            --host="${{ secrets.AWS_RDS_HOST }}" \
+            --user="${{ secrets.DB_USER }}" \
+            --password="${{ secrets.DB_PASSWORD }}" \
+            -e "SELECT id, nombre, email FROM clientes;" tfg_app

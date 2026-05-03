@@ -1,0 +1,92 @@
+# =============================================================================
+# Backup RDS -> Azure Blob Storage
+# =============================================================================
+# Ejecuta mysqldump contra la RDS de AWS y sube el dump comprimido al
+# Blob Storage de Azure.
+#
+# NOTA SOBRE AWS ACADEMY:
+#   Las credenciales del lab caducan en ~4h. El cron cada 6h fallara con
+#   credenciales expiradas. Para el TFG, dejar comentado el schedule y
+#   ejecutar manualmente cuando vayas a hacer la demo.
+# =============================================================================
+
+name: Backup RDS to Azure Blob
+
+on:
+  # Cron desactivado por las credenciales temporales de Academy.
+  # En cuenta AWS normal, descomentar:
+  # schedule:
+  #   - cron: '0 */6 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: mysqldump RDS to Azure Blob
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente MySQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mysql-client
+
+      - name: Login en Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ejecutar mysqldump de RDS
+        run: |
+          TIMESTAMP=$(date -u '+%Y%m%d_%H%M%S')
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_ENV"
+
+          echo "Ejecutando mysqldump de ${{ secrets.AWS_RDS_HOST }}..."
+
+          mysqldump \
+            --host="${{ secrets.AWS_RDS_HOST }}" \
+            --port=3306 \
+            --user="${{ secrets.DB_USER }}" \
+            --password="${{ secrets.DB_PASSWORD }}" \
+            --single-transaction \
+            --routines \
+            --triggers \
+            --set-gtid-purged=OFF \
+            tfg_app | gzip > /tmp/tfg_app_${TIMESTAMP}.sql.gz
+
+          DUMP_SIZE=$(stat -c%s "/tmp/tfg_app_${TIMESTAMP}.sql.gz")
+          echo "Dump generado: /tmp/tfg_app_${TIMESTAMP}.sql.gz (${DUMP_SIZE} bytes)"
+
+          if [ "${DUMP_SIZE}" -lt 100 ]; then
+            echo "ERROR: Dump vacio o corrupto"
+            exit 1
+          fi
+
+      - name: Subir a Azure Blob Storage
+        run: |
+          az storage blob upload \
+            --account-name tfgmulticloudbackup \
+            --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+            --container-name db-backups \
+            --name "tfg_app_${timestamp}.sql.gz" \
+            --file "/tmp/tfg_app_${timestamp}.sql.gz" \
+            --overwrite
+
+          az storage blob upload \
+            --account-name tfgmulticloudbackup \
+            --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+            --container-name db-backups \
+            --name "tfg_app_latest.sql.gz" \
+            --file "/tmp/tfg_app_${timestamp}.sql.gz" \
+            --overwrite
+
+          echo "Backup subido: tfg_app_${timestamp}.sql.gz + tfg_app_latest.sql.gz"
+
+      - name: Verificar backup en Blob
+        run: |
+          echo "Blobs en el contenedor db-backups:"
+          az storage blob list \
+            --account-name tfgmulticloudbackup \
+            --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+            --container-name db-backups \
+            --output table
