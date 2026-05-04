@@ -134,7 +134,7 @@ resource "azurerm_mysql_flexible_server" "dr" {
   location            = azurerm_resource_group.dr.location
 
   administrator_login    = "admin_tfg"
-  administrator_password = var.db_password
+  administrator_password = var.vm_admin_password
 
   sku_name = "B_Standard_B1s"
   version  = "8.0.21"
