@@ -65,7 +65,7 @@ jobs:
       - name: Subir a Azure Blob Storage
         run: |
           az storage blob upload \
-            --account-name tfgmulticloudbackup \
+            --account-name stgalvarospain2026 \
             --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
             --container-name db-backups \
             --name "tfg_app_${timestamp}.sql.gz" \
@@ -73,7 +73,7 @@ jobs:
             --overwrite
 
           az storage blob upload \
-            --account-name tfgmulticloudbackup \
+            --account-name stgalvarospain2026 \
             --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
             --container-name db-backups \
             --name "tfg_app_latest.sql.gz" \
@@ -86,7 +86,7 @@ jobs:
         run: |
           echo "Blobs en el contenedor db-backups:"
           az storage blob list \
-            --account-name tfgmulticloudbackup \
+            --account-name stgalvarospain2026 \
             --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
             --container-name db-backups \
             --output table
