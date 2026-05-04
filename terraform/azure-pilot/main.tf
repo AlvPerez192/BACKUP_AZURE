@@ -30,7 +30,7 @@ terraform {
   # gratis con la cuenta).
   backend "s3" {
     key    = "azure-pilot/terraform.tfstate"
-    region = "eu-west-1"
+    region = "us-east-1"
   }
 }
 
@@ -68,8 +68,8 @@ variable "vm_admin_password" {
 # Resource Group del DR (se destruye en failback)
 # -----------------------------------------------------------------------------
 resource "azurerm_resource_group" "dr" {
-  name     = "tfg-pilot-light-rg"
-  location = "West Europe"
+  name     = "tfg-final-spain-rg"
+  location = "Spain Central"
 
   tags = {
     Project = "TFG-MultiCloud"
@@ -114,7 +114,7 @@ resource "azurerm_subnet" "mysql" {
 }
 
 resource "azurerm_private_dns_zone" "mysql" {
-  name                = "tfg-pilot.mysql.database.azure.com"
+  name                = "alvaro-tfg.mysql.database.azure.com"
   resource_group_name = azurerm_resource_group.dr.name
 }
 
@@ -129,7 +129,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
 # Azure DB for MySQL Flexible Server
 # -----------------------------------------------------------------------------
 resource "azurerm_mysql_flexible_server" "dr" {
-  name                = "tfg-pilot-mysql"
+  name                = "tfg-pilot-mysql-alvaro-2026"
   resource_group_name = azurerm_resource_group.dr.name
   location            = azurerm_resource_group.dr.location
 
