@@ -65,9 +65,9 @@ variable "vm_admin_password" {
 }
 
 # -----------------------------------------------------------------------------
-# Resource Group del DR (se destruye en failback)
+# DATA Group del DR
 # -----------------------------------------------------------------------------
-resource "azurerm_resource_group" "dr" {
+data "azurerm_resource_group" "dr" {
   name     = "tfg-final-spain-rg"
   location = "Spain Central"
 
