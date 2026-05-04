@@ -82,8 +82,8 @@ data "azurerm_resource_group" "dr" {
 # -----------------------------------------------------------------------------
 resource "azurerm_virtual_network" "dr" {
   name                = "tfg-pilot-vnet"
-  location            = azurerm_resource_group.dr.location
-  resource_group_name = azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
   address_space       = ["10.1.0.0/16"]
 
   tags = { Project = "TFG-MultiCloud" }
@@ -91,14 +91,14 @@ resource "azurerm_virtual_network" "dr" {
 
 resource "azurerm_subnet" "vm" {
   name                 = "tfg-pilot-vm-subnet"
-  resource_group_name  = azurerm_resource_group.dr.name
+  resource_group_name  = data.azurerm_resource_group.dr.name
   virtual_network_name = azurerm_virtual_network.dr.name
   address_prefixes     = ["10.1.1.0/24"]
 }
 
 resource "azurerm_subnet" "mysql" {
   name                 = "tfg-pilot-mysql-subnet"
-  resource_group_name  = azurerm_resource_group.dr.name
+  resource_group_name  = data.azurerm_resource_group.dr.name
   virtual_network_name = azurerm_virtual_network.dr.name
   address_prefixes     = ["10.1.2.0/24"]
 
@@ -115,12 +115,12 @@ resource "azurerm_subnet" "mysql" {
 
 resource "azurerm_private_dns_zone" "mysql" {
   name                = "alvaro-tfg.mysql.database.azure.com"
-  resource_group_name = azurerm_resource_group.dr.name
+  resource_group_name = data.azurerm_resource_group.dr.name
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
   name                  = "tfg-pilot-dns-link"
-  resource_group_name   = azurerm_resource_group.dr.name
+  resource_group_name   = data.azurerm_resource_group.dr.name
   private_dns_zone_name = azurerm_private_dns_zone.mysql.name
   virtual_network_id    = azurerm_virtual_network.dr.id
 }
@@ -130,8 +130,8 @@ resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
 # -----------------------------------------------------------------------------
 resource "azurerm_mysql_flexible_server" "dr" {
   name                = "tfg-pilot-mysql-alvaro-2026"
-  resource_group_name = azurerm_resource_group.dr.name
-  location            = azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
 
   administrator_login    = "admin_tfg"
   administrator_password = var.vm_admin_password
@@ -157,7 +157,7 @@ resource "azurerm_mysql_flexible_server" "dr" {
 
 resource "azurerm_mysql_flexible_database" "app" {
   name                = "tfg_app"
-  resource_group_name = azurerm_resource_group.dr.name
+  resource_group_name = data.azurerm_resource_group.dr.name
   server_name         = azurerm_mysql_flexible_server.dr.name
   charset             = "utf8mb4"
   collation           = "utf8mb4_unicode_ci"
@@ -168,8 +168,8 @@ resource "azurerm_mysql_flexible_database" "app" {
 # -----------------------------------------------------------------------------
 resource "azurerm_public_ip" "vm" {
   name                = "tfg-pilot-vm-ip"
-  location            = azurerm_resource_group.dr.location
-  resource_group_name = azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
   allocation_method   = "Static"
   sku                 = "Standard"
 
@@ -178,8 +178,8 @@ resource "azurerm_public_ip" "vm" {
 
 resource "azurerm_network_security_group" "vm" {
   name                = "tfg-pilot-vm-nsg"
-  location            = azurerm_resource_group.dr.location
-  resource_group_name = azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
 
   security_rule {
     name                       = "HTTP"
@@ -208,8 +208,8 @@ resource "azurerm_network_security_group" "vm" {
 
 resource "azurerm_network_interface" "vm" {
   name                = "tfg-pilot-vm-nic"
-  location            = azurerm_resource_group.dr.location
-  resource_group_name = azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
 
   ip_configuration {
     name                          = "internal"
@@ -226,8 +226,8 @@ resource "azurerm_network_interface_security_group_association" "vm" {
 
 resource "azurerm_linux_virtual_machine" "docker" {
   name                = "tfg-pilot-docker-vm"
-  resource_group_name = azurerm_resource_group.dr.name
-  location            = azurerm_resource_group.dr.location
+  resource_group_name = data.azurerm_resource_group.dr.name
+  location            = data.azurerm_resource_group.dr.location
   size                = "Standard_B1s"
 
   admin_username                  = "azureuser"
@@ -283,5 +283,5 @@ output "mysql_fqdn" {
 
 output "resource_group" {
   description = "Resource group del pilot light (para destruirlo en failback)."
-  value       = azurerm_resource_group.dr.name
+  value       = data.azurerm_resource_group.dr.name
 }
