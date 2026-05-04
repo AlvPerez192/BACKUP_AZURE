@@ -121,7 +121,7 @@ jobs:
              --password='${{ secrets.VM_ADMIN_PASSWORD }}' \
              tfg_app < /tmp/tfg_app_latest.sql && echo 'Restore OK'"
 
-      # ----- Arrancar la app en Docker -----
+# ----- Arrancar la app en Docker -----
       - name: Arrancar app en Docker
         run: |
           VM_IP="${{ steps.outputs.outputs.vm_ip }}"
@@ -129,11 +129,18 @@ jobs:
 
           sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
             ssh -o StrictHostKeyChecking=no azureuser@${VM_IP} << DOCKER_CMD
+              # 1. LOGIN (Solo si tu repositorio es PRIVADO)
+              # Si usas Docker Hub: echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+              # Si usas GitHub Packages: echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+              # 2. PULL con verificación (Para evitar el error de '1 argument')
+              if [ -z "${{ secrets.APP_IMAGE }}" ]; then echo "ERROR: APP_IMAGE secret is empty"; exit 1; fi
               sudo docker pull ${{ secrets.APP_IMAGE }}
 
-              # Quitar contenedor previo si existe (idempotente)
+              # 3. Quitar contenedor previo
               sudo docker rm -f tfg-web 2>/dev/null || true
 
+              # 4. RUN con la contraseña correcta para Azure
               sudo docker run -d \
                 --name tfg-web \
                 --restart unless-stopped \
@@ -147,9 +154,12 @@ jobs:
                 -e CLOUD_PROVIDER="AZURE" \
                 ${{ secrets.APP_IMAGE }}
 
-              sleep 3
-              echo "Contenedor:"
+              sleep 5
+              echo "Estado del contenedor:"
               sudo docker ps --filter name=tfg-web
+              
+              # 5. Ver logs si falla (esto te ayudará mucho a debugear)
+              sudo docker logs tfg-web | tail -n 20
           DOCKER_CMD
 
       # ----- Verificar -----
