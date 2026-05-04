@@ -223,7 +223,7 @@ resource "azurerm_linux_virtual_machine" "docker" {
   name                = "tfg-pilot-docker-vm"
   resource_group_name = data.azurerm_resource_group.dr.name
   location            = data.azurerm_resource_group.dr.location
-  size                = "Standard_B2s"
+  size                = "Standard_D2s_v3"
 
   admin_username                  = "azureuser"
   admin_password                  = var.vm_admin_password
