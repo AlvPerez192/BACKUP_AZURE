@@ -132,6 +132,7 @@ resource "azurerm_mysql_flexible_server" "dr" {
 
   sku_name = "B_Standard_B1ms"
   version  = "8.0.21"
+  zone                = "2"
 
   storage {
     size_gb = 20
@@ -222,7 +223,7 @@ resource "azurerm_linux_virtual_machine" "docker" {
   name                = "tfg-pilot-docker-vm"
   resource_group_name = data.azurerm_resource_group.dr.name
   location            = data.azurerm_resource_group.dr.location
-  size                = "Standard_B1ms"
+  size                = "Standard_B2s"
 
   admin_username                  = "azureuser"
   admin_password                  = var.vm_admin_password
