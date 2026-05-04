@@ -69,7 +69,6 @@ variable "vm_admin_password" {
 # -----------------------------------------------------------------------------
 data "azurerm_resource_group" "dr" {
   name     = "tfg-final-spain-rg"
-  location = "Spain Central"
 
   tags = {
     Project = "TFG-MultiCloud"
