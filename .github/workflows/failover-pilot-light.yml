@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: eu-west-1
+  AWS_REGION: us-east-1
   TF_DIR: terraform/azure-pilot
 
 jobs:
@@ -72,7 +72,7 @@ jobs:
       - name: Descargar ultimo backup
         run: |
           az storage blob download \
-            --account-name tfgmulticloudbackup \
+            --account-name stgalvarospain2026 \
             --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
             --container-name db-backups \
             --name "tfg_app_latest.sql.gz" \
@@ -118,7 +118,7 @@ jobs:
           sshpass -p "${{ secrets.VM_ADMIN_PASSWORD }}" \
             ssh -o StrictHostKeyChecking=no azureuser@${VM_IP} \
             "mysql --host='${MYSQL_HOST}' --user='admin_tfg' \
-             --password='${{ secrets.DB_PASSWORD }}' \
+             --password='${{ secrets.VM_ADMIN_PASSWORD }}' \
              tfg_app < /tmp/tfg_app_latest.sql && echo 'Restore OK'"
 
       # ----- Arrancar la app en Docker -----
@@ -142,7 +142,7 @@ jobs:
                 -e DB_PORT="3306" \
                 -e DB_NAME="tfg_app" \
                 -e DB_USER="admin_tfg" \
-                -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e DB_PASSWORD="${{ secrets.VM_ADMIN_PASSWORD }}" \
                 -e APP_PORT="3000" \
                 -e CLOUD_PROVIDER="AZURE" \
                 ${{ secrets.APP_IMAGE }}
