@@ -130,7 +130,7 @@ resource "azurerm_mysql_flexible_server" "dr" {
   administrator_login    = "admin_tfg"
   administrator_password = var.vm_admin_password
 
-  sku_name = "B_Standard_B1s"
+  sku_name = "B_Standard_B1ms"
   version  = "8.0.21"
 
   storage {
