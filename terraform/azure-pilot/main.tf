@@ -132,6 +132,8 @@ resource "azurerm_mysql_flexible_server" "dr" {
 
   sku_name = "B_Standard_B1ms"
   version  = "8.0.21"
+  # AÑADE ESTO PARA QUITAR LA OBLIGACIÓN DE SSL
+  customer_managed_key_enforcement_enabled = false
   zone                = "2"
 
   storage {
@@ -156,6 +158,13 @@ resource "azurerm_mysql_flexible_database" "app" {
   server_name         = azurerm_mysql_flexible_server.dr.name
   charset             = "utf8mb4"
   collation           = "utf8mb4_unicode_ci"
+}
+# Y AÑADE ESTE RECURSO ADICIONAL AL FINAL DEL ARCHIVO
+resource "azurerm_mysql_flexible_server_configuration" "disable_ssl" {
+  name                = "require_secure_transport"
+  resource_group_name = data.azurerm_resource_group.dr.name
+  server_name         = azurerm_mysql_flexible_server.dr.name
+  value               = "OFF"
 }
 
 # -----------------------------------------------------------------------------
@@ -280,3 +289,4 @@ output "resource_group" {
   description = "Resource group del pilot light (para destruirlo en failback)."
   value       = data.azurerm_resource_group.dr.name
 }
+
