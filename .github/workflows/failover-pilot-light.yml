@@ -150,18 +150,23 @@ jobs:
                 -e DB_PASSWORD="${{ secrets.VM_ADMIN_PASSWORD }}" \
                 -e APP_PORT="3000" \
                 -e CLOUD_PROVIDER="AZURE" \
+                -e DB_SSL="true" \
+                -e MYSQL_ATTR_SSL_CA="" \
                 ${{ secrets.APP_IMAGE }}
 
               sleep 5
               sudo docker ps --filter name=tfg-web
+
+              echo "Logs de la aplicación (Debug):"
+              sudo docker logs tfg-web | tail -n 20
           DOCKER_CMD
 
-      # ----- Verificar -----
+# ----- Verificar -----
       - name: Verificar app en Azure
         run: |
           VM_IP="${{ steps.outputs.outputs.vm_ip }}"
-          echo "Esperando a que la app arranque..."
-          sleep 15
+          echo "Esperando 45 segundos para que la DB y la App se estabilicen..."
+          sleep 45 
 
           for i in $(seq 1 6); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -170,13 +175,12 @@ jobs:
             echo "Intento ${i}/6: HTTP ${HTTP_CODE}"
             if [ "${HTTP_CODE}" = "200" ]; then
               echo "App funcionando en Azure: http://${VM_IP}"
-              curl -s "http://${VM_IP}/health" | jq .
               exit 0
             fi
             sleep 10
           done
 
-          echo "ERROR: la app no respondio HTTP 200 tras 60s"
+          echo "ERROR: la app respondio ${HTTP_CODE} (esperaba 200)"
           exit 1
 
       - name: Resumen
