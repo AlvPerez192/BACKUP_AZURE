@@ -154,11 +154,11 @@ jobs:
                 -e MYSQL_ATTR_SSL_CA="" \
                 ${{ secrets.APP_IMAGE }}
 
-              sleep 5
+              sleep 10
               sudo docker ps --filter name=tfg-web
 
               echo "Logs de la aplicación (Debug):"
-              sudo docker logs tfg-web | tail -n 20
+              sudo docker logs tfg-web | tail -n 50
           DOCKER_CMD
 
 # ----- Verificar -----
